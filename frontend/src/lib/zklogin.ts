@@ -1,0 +1,72 @@
+import { Ed25519Keypair } from "@mysten/sui/keypairs/ed25519";
+import { getJsonRpcFullnodeUrl, SuiJsonRpcClient } from "@mysten/sui/jsonRpc";
+import { decodeJwt, generateNonce, generateRandomness, jwtToAddress } from "@mysten/sui/zklogin";
+import { api } from "./api";
+
+const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID as string;
+const SUI_NETWORK = (import.meta.env.VITE_SUI_NETWORK as string) ?? "testnet";
+
+// Buffer so the ephemeral keypair stays valid for a couple of epochs past
+// when the user starts the login flow.
+const MAX_EPOCH_BUFFER = 2;
+
+const STORAGE_KEYS = {
+  ephemeralSecretKey: "umbra.ephemeralSecretKey",
+  maxEpoch: "umbra.maxEpoch",
+  randomness: "umbra.randomness",
+} as const;
+
+const suiClient = new SuiJsonRpcClient({
+  url: getJsonRpcFullnodeUrl(SUI_NETWORK as "testnet"),
+  network: SUI_NETWORK as "testnet",
+});
+
+/** Step 1: generate the ephemeral keypair + nonce, then redirect to Google.
+ *
+ * The ephemeral keypair, randomness, and maxEpoch are needed again later to
+ * request the ZK proof at send-time (brief §12 step 6) — they're stashed in
+ * sessionStorage now so they survive the redirect to Google and back.
+ */
+export async function beginGoogleLogin(): Promise<void> {
+  const { epoch } = await suiClient.getLatestSuiSystemState();
+  const maxEpoch = Number(epoch) + MAX_EPOCH_BUFFER;
+
+  const ephemeralKeypair = new Ed25519Keypair();
+  const randomness = generateRandomness();
+  const nonce = generateNonce(ephemeralKeypair.getPublicKey(), maxEpoch, randomness);
+
+  sessionStorage.setItem(STORAGE_KEYS.ephemeralSecretKey, ephemeralKeypair.getSecretKey());
+  sessionStorage.setItem(STORAGE_KEYS.maxEpoch, String(maxEpoch));
+  sessionStorage.setItem(STORAGE_KEYS.randomness, randomness);
+
+  const params = new URLSearchParams({
+    client_id: GOOGLE_CLIENT_ID,
+    redirect_uri: window.location.origin + "/",
+    response_type: "id_token",
+    scope: "openid",
+    nonce,
+  });
+  window.location.assign(`https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`);
+}
+
+/** Step 2: called on redirect back from Google. Extracts the ID token from
+ * the URL fragment, verifies it server-side, derives the zkLogin Sui
+ * address, and establishes the Umbra session. Returns null if there's no
+ * pending login to complete. */
+export async function completeGoogleLogin(): Promise<string | null> {
+  const hashParams = new URLSearchParams(window.location.hash.slice(1));
+  const idToken = hashParams.get("id_token");
+  if (!idToken) return null;
+
+  window.history.replaceState(null, "", window.location.pathname);
+
+  if (!sessionStorage.getItem(STORAGE_KEYS.ephemeralSecretKey)) {
+    throw new Error("No pending login found for this session (ephemeral key missing)");
+  }
+
+  decodeJwt(idToken); // throws if malformed before we round-trip to the backend
+  const { google_sub, salt } = await api.verifyGoogleToken(idToken);
+  const suiAddress = jwtToAddress(idToken, salt, false);
+  await api.createSession(google_sub, suiAddress);
+  return suiAddress;
+}
