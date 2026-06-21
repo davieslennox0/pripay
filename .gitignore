@@ -1,0 +1,13 @@
+node_modules/
+dist/
+build/
+.env
+.env.*
+__pycache__/
+*.pyc
+.venv/
+venv/
+move-contracts/*/build/
+.DS_Store
+*.log
+.claude/settings.local.json
