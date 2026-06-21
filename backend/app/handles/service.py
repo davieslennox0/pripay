@@ -65,6 +65,17 @@ def list_handles(db: Session, sui_address: str) -> list[BoundHandle]:
     return list(db.scalars(stmt))
 
 
+def resolve_handle(db: Session, platform: str, handle: str) -> BoundHandle | None:
+    """Exact-match lookup used by the send flow to decide bound-recipient
+    (settle now) vs unbound-recipient (escrow until claimed) — distinct
+    from search_handles, which does prefix matching for typeahead."""
+    normalized = normalize_handle(platform, handle)
+    stmt = select(BoundHandle).where(
+        BoundHandle.platform == platform, BoundHandle.handle_normalized == normalized
+    )
+    return db.scalars(stmt).first()
+
+
 def search_handles(db: Session, platform: str, query: str, limit: int = 10) -> list[BoundHandle]:
     normalized = normalize_handle(platform, query)
     stmt = (

@@ -1,6 +1,6 @@
 from datetime import datetime, timezone
 
-from sqlalchemy import Boolean, DateTime, Integer, String, UniqueConstraint, create_engine
+from sqlalchemy import Boolean, DateTime, Float, Integer, String, UniqueConstraint, create_engine
 from sqlalchemy.orm import DeclarativeBase, Mapped, Session, mapped_column, sessionmaker
 
 from app.config import settings
@@ -82,6 +82,30 @@ class EmailVerificationToken(Base):
     email: Mapped[str] = mapped_column(String, nullable=False)
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     consumed: Mapped[bool] = mapped_column(Boolean, default=False)
+
+
+class SendRecord(Base):
+    """A send, plaintext for now (brief §12 step 4: happy path before
+    Seal/TEE/Walrus are layered in). `status` tracks the stubbed on-chain
+    settlement (see send/service.py) until real contract calls replace it.
+    """
+
+    __tablename__ = "send_records"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    sender_sui_address: Mapped[str] = mapped_column(String, nullable=False, index=True)
+    recipient_platform: Mapped[str] = mapped_column(String, nullable=False)
+    recipient_handle: Mapped[str] = mapped_column(String, nullable=False)
+    recipient_sui_address: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
+    amount: Mapped[float] = mapped_column(Float, nullable=False)
+    fee: Mapped[float] = mapped_column(Float, nullable=False)
+    receiver_gets: Mapped[float] = mapped_column(Float, nullable=False)
+    status: Mapped[str] = mapped_column(String, nullable=False)
+    claim_token: Mapped[str | None] = mapped_column(String, nullable=True, unique=True)
+    tx_ref: Mapped[str | None] = mapped_column(String, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
+    )
 
 
 def init_db() -> None:

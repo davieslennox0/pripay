@@ -27,6 +27,29 @@ export interface MeResponse {
   sui_address: string;
 }
 
+export interface PinStatusResponse {
+  is_set: boolean;
+}
+
+export interface SearchResult {
+  platform: string;
+  handle: string;
+  sui_address: string;
+}
+
+export interface SendQuoteResponse {
+  is_bound: boolean;
+  fee: number;
+  receiver_gets: number;
+}
+
+export interface SendExecuteResponse {
+  status: string;
+  receiver_gets: number;
+  claim_token: string | null;
+  tx_ref: string | null;
+}
+
 export const api = {
   verifyGoogleToken: (idToken: string) =>
     request<GoogleVerifyResponse>("/auth/google/verify", {
@@ -43,4 +66,29 @@ export const api = {
   me: () => request<MeResponse>("/auth/me"),
 
   logout: () => request<{ ok: boolean }>("/auth/logout", { method: "POST" }),
+
+  pinStatus: () => request<PinStatusResponse>("/pin/status"),
+
+  setPin: (pin: string) => request<{ ok: boolean }>("/pin/set", { method: "POST", body: JSON.stringify({ pin }) }),
+
+  searchHandles: (platform: string, query: string) =>
+    request<SearchResult[]>(`/handles/search?${new URLSearchParams({ platform, query })}`),
+
+  sendQuote: (platform: string, handle: string, amount: number) =>
+    request<SendQuoteResponse>("/send/quote", {
+      method: "POST",
+      body: JSON.stringify({ platform, handle, amount }),
+    }),
+
+  sendExecute: (platform: string, handle: string, amount: number, pin: string) =>
+    request<SendExecuteResponse>("/send/execute", {
+      method: "POST",
+      body: JSON.stringify({ platform, handle, amount, pin }),
+    }),
+
+  claimSend: (claimToken: string) =>
+    request<{ ok: boolean; amount: number }>("/send/claim", {
+      method: "POST",
+      body: JSON.stringify({ claim_token: claimToken }),
+    }),
 };

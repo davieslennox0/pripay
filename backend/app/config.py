@@ -32,5 +32,11 @@ class Settings(BaseSettings):
     magic_link_base_url: str = "http://localhost:5173/verify-email"
     magic_link_ttl_minutes: int = 30
 
+    # Fee spec (brief §7) — must match move-contracts/umbra/sources/revenue_vault.move
+    # exactly (PLATFORM_FEE_BASE_UNITS / MIN_SEND_BASE_UNITS) since that contract
+    # is the actual on-chain enforcement once settlement is no longer stubbed.
+    platform_fee_usdc: float = 0.10
+    min_send_usdc: float = 0.15
+
 
 settings = Settings()
