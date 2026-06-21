@@ -1,7 +1,7 @@
 import secrets
 from datetime import datetime, timedelta, timezone
 
-from fastapi import HTTPException, status
+from fastapi import Cookie, HTTPException, status
 from google.auth.transport import requests as google_requests
 from google.oauth2 import id_token as google_id_token
 from jose import JWTError, jwt
@@ -74,3 +74,14 @@ def decode_session_token(token: str) -> dict:
         return jwt.decode(token, settings.session_secret, algorithms=["HS256"])
     except JWTError:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Invalid or expired session")
+
+
+def require_session(
+    session_token: str | None = Cookie(default=None, alias=settings.session_cookie_name),
+) -> dict:
+    """Shared auth dependency for any route that needs a logged-in user —
+    PIN and handle-binding routes both depend on this rather than re-reading
+    the cookie themselves."""
+    if session_token is None:
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Not logged in")
+    return decode_session_token(session_token)

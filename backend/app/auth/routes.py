@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Cookie, Depends, HTTPException, Response, status
+from fastapi import APIRouter, Depends, Response
 from sqlalchemy.orm import Session
 
 from app.auth import service
@@ -53,8 +53,5 @@ def logout(response: Response):
 
 
 @router.get("/me", response_model=MeResponse)
-def me(session_token: str | None = Cookie(default=None, alias=settings.session_cookie_name)):
-    if session_token is None:
-        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Not logged in")
-    claims = service.decode_session_token(session_token)
+def me(claims: dict = Depends(service.require_session)):
     return MeResponse(google_sub=claims["sub"], sui_address=claims["sui_address"])

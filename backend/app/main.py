@@ -4,6 +4,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.auth.routes import router as auth_router
 from app.config import settings
 from app.db import init_db
+from app.handles.routes import router as handles_router
+from app.pin.routes import router as pin_router
 
 app = FastAPI(title="Umbra API")
 
@@ -16,6 +18,8 @@ app.add_middleware(
 )
 
 app.include_router(auth_router)
+app.include_router(pin_router)
+app.include_router(handles_router)
 
 
 @app.on_event("startup")
