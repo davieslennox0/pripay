@@ -27,6 +27,10 @@ class SendExecuteResponse(BaseModel):
     receiver_gets: float
     claim_token: str | None
     tx_ref: str | None
+    # Which enclave settled this send + the attestation digest it returned
+    # (brief §4/§5). Lets the client show "settled in <provider> enclave".
+    tee_provider: str | None
+    tee_attestation: str | None
 
 
 class ClaimRequest(BaseModel):

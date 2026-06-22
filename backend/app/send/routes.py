@@ -38,6 +38,8 @@ def execute(
         receiver_gets=record.receiver_gets,
         claim_token=record.claim_token,
         tx_ref=record.tx_ref,
+        tee_provider=record.tee_provider,
+        tee_attestation=record.tee_attestation,
     )
 
 

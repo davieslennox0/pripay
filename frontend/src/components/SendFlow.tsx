@@ -77,6 +77,12 @@ export function SendFlow() {
           </p>
         )}
         {result.tx_ref && <p>Tx ref: {result.tx_ref}</p>}
+        {result.tee_provider && (
+          <p>
+            Settled in <code>{result.tee_provider}</code> enclave · attestation{" "}
+            <code>{result.tee_attestation?.slice(0, 16)}…</code>
+          </p>
+        )}
         <button type="button" onClick={() => setResult(null)}>
           Send another
         </button>

@@ -87,7 +87,10 @@ class EmailVerificationToken(Base):
 class SendRecord(Base):
     """A send, plaintext for now (brief §12 step 4: happy path before
     Seal/TEE/Walrus are layered in). `status` tracks the stubbed on-chain
-    settlement (see send/service.py) until real contract calls replace it.
+    settlement until real contract calls replace it. As of phase 6 the
+    settlement itself is produced by the TEE executor (app/tee), and the
+    attestation it returns is recorded here as an audit anchor (brief §5:
+    "a hash for audit/dispute purposes").
     """
 
     __tablename__ = "send_records"
@@ -103,6 +106,10 @@ class SendRecord(Base):
     status: Mapped[str] = mapped_column(String, nullable=False)
     claim_token: Mapped[str | None] = mapped_column(String, nullable=True, unique=True)
     tx_ref: Mapped[str | None] = mapped_column(String, nullable=True)
+    # Which enclave signed/relayed this, and the attestation digest binding
+    # that enclave to the settled outcome (see app/tee/schemas.TeeAttestation).
+    tee_provider: Mapped[str | None] = mapped_column(String, nullable=True)
+    tee_attestation: Mapped[str | None] = mapped_column(String, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
     )

@@ -48,6 +48,9 @@ export interface SendExecuteResponse {
   receiver_gets: number;
   claim_token: string | null;
   tx_ref: string | null;
+  // Enclave that settled the send + its attestation digest (brief §4/§5).
+  tee_provider: string | null;
+  tee_attestation: string | null;
 }
 
 export const api = {

@@ -38,5 +38,18 @@ class Settings(BaseSettings):
     platform_fee_usdc: float = 0.10
     min_send_usdc: float = 0.15
 
+    # TEE execution layer (brief §4 + §12 step 6). Selects which TeeExecutor
+    # the send path relays through. "mock" is the in-process simulated enclave
+    # (app/tee/mock.py) — the build order explicitly starts here so the rest of
+    # the system isn't blocked on the Nitro Enclaves / Oasis ROFL / Phala
+    # infra decision (still an open flag in the brief). A real provider plugs
+    # in behind the same TeeExecutor interface.
+    tee_provider: str = "mock"
+    # Stands in for the enclave image measurement (e.g. Nitro PCR0) that a
+    # client/relayer pins before sealing a request to the enclave. The mock
+    # echoes it back in its attestation so the attestation-verify path is
+    # exercised end-to-end ahead of real attestation docs.
+    tee_enclave_measurement: str = "mock-enclave-pcr0-0000000000000000"
+
 
 settings = Settings()
