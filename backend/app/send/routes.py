@@ -31,7 +31,13 @@ def execute(
     db: Session = Depends(get_db),
 ):
     record = service.execute(
-        db, claims["sui_address"], body.platform, body.handle, body.amount, body.pin
+        db,
+        claims["sui_address"],
+        body.platform,
+        body.handle,
+        body.amount,
+        body.pin,
+        body.memo,
     )
     return SendExecuteResponse(
         status=record.status,
@@ -40,6 +46,7 @@ def execute(
         tx_ref=record.tx_ref,
         tee_provider=record.tee_provider,
         tee_attestation=record.tee_attestation,
+        record_hash=record.record_hash,
     )
 
 
@@ -61,6 +68,7 @@ def list_mine(claims: dict = Depends(require_session), db: Session = Depends(get
             fee=r.fee,
             receiver_gets=r.receiver_gets,
             status=r.status,
+            record_hash=r.record_hash,
             created_at=r.created_at,
         )
         for r in service.list_sent(db, claims["sui_address"])

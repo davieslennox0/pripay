@@ -11,4 +11,5 @@ venv/
 move-contracts/*/build/
 .DS_Store
 *.log
+_walrus_blobs/
 .claude/settings.local.json

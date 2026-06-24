@@ -110,6 +110,14 @@ class SendRecord(Base):
     # that enclave to the settled outcome (see app/tee/schemas.TeeAttestation).
     tee_provider: Mapped[str | None] = mapped_column(String, nullable=True)
     tee_attestation: Mapped[str | None] = mapped_column(String, nullable=True)
+    # Encrypted record in Walrus (brief §5/§12 step 7) — amount/token/memo are
+    # only ever read back through app.storage.read_record, never stored
+    # plaintext here beyond the `amount` column above (kept for the existing
+    # quote/list UI; the Walrus blob is the source of truth once Seal lands).
+    walrus_backend: Mapped[str | None] = mapped_column(String, nullable=True)
+    walrus_blob_id: Mapped[str | None] = mapped_column(String, nullable=True)
+    record_hash: Mapped[str | None] = mapped_column(String, nullable=True)
+    seal_identity: Mapped[str | None] = mapped_column(String, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
     )

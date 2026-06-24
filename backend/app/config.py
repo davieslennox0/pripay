@@ -51,5 +51,30 @@ class Settings(BaseSettings):
     # exercised end-to-end ahead of real attestation docs.
     tee_enclave_measurement: str = "mock-enclave-pcr0-0000000000000000"
 
+    # Walrus encrypted-blob storage (brief §5 + §12 step 7). Walrus only ever
+    # stores ciphertext — the record is encrypted (see record_encryption_key)
+    # before upload.
+    #   "local" — content-addressed filesystem store (walrus_local_dir),
+    #             the default so the flow works offline / in tests.
+    #   "http"  — real Walrus publisher/aggregator HTTP API (testnet URLs
+    #             below). Same WalrusClient interface, config swap only.
+    walrus_backend: str = "local"
+    walrus_local_dir: str = "./_walrus_blobs"
+    walrus_publisher_url: str = "https://publisher.walrus-testnet.walrus.space"
+    walrus_aggregator_url: str = "https://aggregator.walrus-testnet.walrus.space"
+    walrus_epochs: int = 1  # storage duration for the http backend
+
+    # Record encryption key (32-byte hex) for the AES-256-GCM that protects
+    # transaction records at rest in Walrus. This is the PLACEHOLDER for Seal
+    # (brief §5): Seal's threshold/identity scheme scopes decryption to the
+    # sender + receiver Sui addresses via key servers + seal_approve, and is
+    # blocked on the same unpublished-package step as phases 4/5 (plus the
+    # lack of a Python Seal SDK — real Seal-encrypt happens client/TEE-side in
+    # TS). Until then this gives real confidentiality at rest using the same
+    # sender||receiver identity binding, so the swap to Seal is localized to
+    # app/storage/encryption.py. Auto-generated per process if unset (fine for
+    # dev; set a stable key in prod or blobs become unreadable across restarts).
+    record_encryption_key: str = secrets.token_hex(32)
+
 
 settings = Settings()

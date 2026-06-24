@@ -6,6 +6,8 @@ from app.config import settings
 from app.db import SendRecord
 from app.handles import service as handles_service
 from app.pin import service as pin_service
+from app.storage import rebind_record, store_record
+from app.storage.schemas import TransactionRecord
 from app.tee import get_tee_executor
 from app.tee.schemas import TransferRequest
 
@@ -29,13 +31,24 @@ def quote(db: Session, platform: str, handle: str, amount: float) -> tuple[bool,
 
 
 def execute(
-    db: Session, sender_sui_address: str, platform: str, handle: str, amount: float, pin: str
+    db: Session,
+    sender_sui_address: str,
+    platform: str,
+    handle: str,
+    amount: float,
+    pin: str,
+    memo: str | None = None,
 ) -> SendRecord:
     """Assemble the transfer request, seal it, and hand it to the TEE (brief
     §4). PIN verification, fee re-validation, and signing/relaying all happen
     behind the enclave boundary — this function never sees the cleartext
     amount validated, never holds the signing path, and discards the PIN into
-    the sealed envelope. It only persists the attested result."""
+    the sealed envelope. It only persists the attested result.
+
+    Once settled, the sensitive fields (amount, token, memo) are Seal-scoped
+    (placeholder) and uploaded to Walrus (brief §5) — an unbound recipient
+    means the receiver address isn't known yet, so the record is sealed to
+    the sender alone until `claim` rebinds it."""
     bound = handles_service.resolve_handle(db, platform, handle)
 
     request = TransferRequest(
@@ -54,6 +67,12 @@ def execute(
         pin_verifier=lambda addr, p: pin_service.verify_pin(db, addr, p),
     )
 
+    stored = store_record(
+        sender_sui_address,
+        result.recipient_sui_address,
+        TransactionRecord(amount=result.receiver_gets, token="USDC", memo=memo),
+    )
+
     record = SendRecord(
         sender_sui_address=sender_sui_address,
         recipient_platform=platform,
@@ -67,6 +86,10 @@ def execute(
         tx_ref=result.tx_ref,
         tee_provider=result.attestation.provider,
         tee_attestation=result.attestation.request_digest,
+        walrus_backend=stored.backend,
+        walrus_blob_id=stored.blob_id,
+        record_hash=stored.record_hash,
+        seal_identity=stored.seal_identity,
     )
     db.add(record)
     db.commit()
@@ -78,6 +101,15 @@ def claim(db: Session, claim_token: str, claimer_sui_address: str) -> SendRecord
     record = db.scalars(stmt).first()
     if record is None or record.status != "escrowed_stub":
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "Invalid or already-claimed link")
+
+    if record.walrus_blob_id is not None:
+        rebound = rebind_record(
+            record.sender_sui_address, record.walrus_blob_id, claimer_sui_address
+        )
+        record.walrus_backend = rebound.backend
+        record.walrus_blob_id = rebound.blob_id
+        record.record_hash = rebound.record_hash
+        record.seal_identity = rebound.seal_identity
 
     record.recipient_sui_address = claimer_sui_address
     record.status = "claimed_stub"

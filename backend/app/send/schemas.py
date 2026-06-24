@@ -20,6 +20,7 @@ class SendExecuteRequest(BaseModel):
     handle: str
     amount: float
     pin: str
+    memo: str | None = None
 
 
 class SendExecuteResponse(BaseModel):
@@ -31,6 +32,9 @@ class SendExecuteResponse(BaseModel):
     # (brief §4/§5). Lets the client show "settled in <provider> enclave".
     tee_provider: str | None
     tee_attestation: str | None
+    # Walrus audit hash for the encrypted record (brief §5) — sha256 over the
+    # ciphertext, provable without decrypting it.
+    record_hash: str | None
 
 
 class ClaimRequest(BaseModel):
@@ -44,4 +48,5 @@ class SendRecordOut(BaseModel):
     fee: float
     receiver_gets: float
     status: str
+    record_hash: str | None
     created_at: datetime
