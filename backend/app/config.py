@@ -91,5 +91,15 @@ class Settings(BaseSettings):
         "0xdba34672e30cb065b1f93e3ab55318768fd6fef66c15942c9f7cb846e2f900e7::usdc::USDC"
     )
 
+    # Swap module (brief §10 + §12 step 9). Aftermath is Sui-native and the
+    # only venue wired up for MVP ("start with Aftermath since you're already
+    # deep in Sui") — Uniswap (EVM) / Jupiter (Solana) / THORChain (native
+    # cross-chain) / LI.FI-or-1inch (fallback) come later behind the same
+    # SwapVenue interface. No Python SDK exists for Aftermath (same gap as
+    # Seal) so this talks to its REST API directly, same approach as LI.FI.
+    swap_venue: str = "aftermath"
+    aftermath_api_url: str = "https://aftermath.finance/api"
+    swap_default_slippage: float = 0.01
+
 
 settings = Settings()

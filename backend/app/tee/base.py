@@ -15,7 +15,13 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from typing import Callable
 
-from app.tee.schemas import SealedRequest, TransferRequest, TransferResult
+from app.tee.schemas import (
+    SealedRequest,
+    SwapRequest,
+    SwapResult,
+    TransferRequest,
+    TransferResult,
+)
 
 # (sui_address, pin) -> None on success, raises (HTTPException) on a wrong /
 # locked / unset PIN. Injected so the enclave can verify the PIN against the
@@ -43,3 +49,15 @@ class TeeExecutor(ABC):
         """Open the sealed request inside the enclave, verify the PIN,
         re-validate the transfer against the fee spec (never trusting the
         caller), sign + relay to Sui, and return a result with attestation."""
+
+    @abstractmethod
+    def seal_swap(self, request: SwapRequest) -> SealedRequest:
+        """Encrypt a plaintext swap request to the enclave (brief §10)."""
+
+    @abstractmethod
+    def execute_swap(
+        self, sealed: SealedRequest, pin_verifier: PinVerifier
+    ) -> SwapResult:
+        """Open the sealed swap request inside the enclave, verify the PIN,
+        sign + relay the (already-built, venue-quoted) transaction to Sui,
+        and return a result with attestation."""

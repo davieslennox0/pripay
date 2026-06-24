@@ -66,3 +66,31 @@ class TransferResult:
     tx_ref: str | None
     claim_token: str | None
     attestation: TeeAttestation
+
+
+@dataclass
+class SwapRequest:
+    """The sender's PIN-protected swap request (brief §10). `unsigned_tx` is
+    the base64 transaction the swap venue (e.g. Aftermath) already built for
+    `amount_in` of `coin_in_type` -> `coin_out_type` — opaque to the enclave,
+    which only signs/relays it after the PIN checks out, the same trust
+    boundary as a transfer."""
+
+    sui_address: str
+    coin_in_type: str
+    coin_out_type: str
+    amount_in: str  # base units, decimal string (exceeds float precision)
+    amount_out_min: str
+    unsigned_tx: str
+    pin: str
+
+
+@dataclass
+class SwapResult:
+    """What the enclave returns after signing/relaying a swap. No fee field —
+    brief §7: swap gas comes out of the sent amount, no separate platform
+    fee on top."""
+
+    status: str
+    tx_ref: str | None
+    attestation: TeeAttestation

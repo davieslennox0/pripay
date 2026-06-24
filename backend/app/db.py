@@ -1,6 +1,15 @@
 from datetime import datetime, timezone
 
-from sqlalchemy import Boolean, DateTime, Float, Integer, String, UniqueConstraint, create_engine
+from sqlalchemy import (
+    Boolean,
+    DateTime,
+    Float,
+    Integer,
+    String,
+    Text,
+    UniqueConstraint,
+    create_engine,
+)
 from sqlalchemy.orm import DeclarativeBase, Mapped, Session, mapped_column, sessionmaker
 
 from app.config import settings
@@ -144,6 +153,49 @@ class ReceiveRecord(Base):
     receiving_tx_hash: Mapped[str | None] = mapped_column(String, nullable=True)
     # quoted -> pending (source tx submitted) -> settled | failed
     status: Mapped[str] = mapped_column(String, nullable=False, default="quoted")
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
+    )
+
+
+class SwapQuote(Base):
+    """A quoted swap route (brief §10), held server-side between `/swap/quote`
+    and `/swap/execute` since the route object must be passed back to the
+    swap venue verbatim to build the transaction. `used` prevents replaying
+    the same quote into two transactions."""
+
+    __tablename__ = "swap_quotes"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    sui_address: Mapped[str] = mapped_column(String, nullable=False, index=True)
+    coin_in_type: Mapped[str] = mapped_column(String, nullable=False)
+    coin_out_type: Mapped[str] = mapped_column(String, nullable=False)
+    amount_in: Mapped[str] = mapped_column(String, nullable=False)
+    amount_out_min: Mapped[str] = mapped_column(String, nullable=False)
+    route_json: Mapped[str] = mapped_column(Text, nullable=False)
+    used: Mapped[bool] = mapped_column(Boolean, default=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
+    )
+
+
+class SwapRecord(Base):
+    """A settled (stubbed) swap (brief §10 + §12 step 9). As with SendRecord,
+    settlement is produced by the TEE executor and the attestation it
+    returns is recorded here as an audit anchor."""
+
+    __tablename__ = "swap_records"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    sui_address: Mapped[str] = mapped_column(String, nullable=False, index=True)
+    coin_in_type: Mapped[str] = mapped_column(String, nullable=False)
+    coin_out_type: Mapped[str] = mapped_column(String, nullable=False)
+    amount_in: Mapped[str] = mapped_column(String, nullable=False)
+    amount_out_min: Mapped[str] = mapped_column(String, nullable=False)
+    status: Mapped[str] = mapped_column(String, nullable=False)
+    tx_ref: Mapped[str | None] = mapped_column(String, nullable=True)
+    tee_provider: Mapped[str | None] = mapped_column(String, nullable=True)
+    tee_attestation: Mapped[str | None] = mapped_column(String, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
     )

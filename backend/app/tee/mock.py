@@ -25,6 +25,8 @@ from app.config import settings
 from app.tee.base import PinVerifier, TeeExecutor
 from app.tee.schemas import (
     SealedRequest,
+    SwapRequest,
+    SwapResult,
     TeeAttestation,
     TransferRequest,
     TransferResult,
@@ -100,11 +102,46 @@ class MockTeeExecutor(TeeExecutor):
             attestation=attestation,
         )
 
+    def seal_swap(self, request: SwapRequest) -> SealedRequest:
+        blob = json.dumps(asdict(request)).encode()
+        return SealedRequest(
+            provider=self.provider,
+            ciphertext=base64.b64encode(blob).decode(),
+        )
+
+    def execute_swap(
+        self, sealed: SealedRequest, pin_verifier: PinVerifier
+    ) -> SwapResult:
+        if sealed.provider != self.provider:
+            raise HTTPException(
+                status.HTTP_400_BAD_REQUEST,
+                f"Sealed request is for provider '{sealed.provider}', not '{self.provider}'",
+            )
+
+        # ---- everything below is "inside the enclave" ----
+        request = self._open_swap(sealed)
+
+        pin_verifier(request.sui_address, request.pin)
+
+        # Real: deserialize `unsigned_tx` as a Sui PTB, sign with the sender's
+        # zkLogin credential, broadcast. Still stubbed for the same reason as
+        # transfers (unpublished Move package) — the tx bytes themselves are
+        # real, quoted by the swap venue (app/swap), only signing/relay isn't.
+        tx_ref = self._sign_and_relay_swap(request)
+        status_str = "settled_stub"
+
+        attestation = self._attest_swap(request, status_str, tx_ref)
+        return SwapResult(status=status_str, tx_ref=tx_ref, attestation=attestation)
+
     # --- enclave-internal helpers ---
 
     def _open(self, sealed: SealedRequest) -> TransferRequest:
         data = json.loads(base64.b64decode(sealed.ciphertext))
         return TransferRequest(**data)
+
+    def _open_swap(self, sealed: SealedRequest) -> SwapRequest:
+        data = json.loads(base64.b64decode(sealed.ciphertext))
+        return SwapRequest(**data)
 
     def _validate(self, amount: float) -> tuple[float, float]:
         """Authoritative copy of the fee check (brief §7). Intentionally does
@@ -137,6 +174,38 @@ class MockTeeExecutor(TeeExecutor):
             f"handle_hash {handle_hash[:16]}… ({amount} USDC)"
         )
         return f"stub-escrow-{secrets.token_hex(16)}"
+
+    def _sign_and_relay_swap(self, request: SwapRequest) -> str:
+        # Real: deserialize unsigned_tx, sign with the sender's zkLogin
+        # credential, broadcast, confirm coinOut >= amount_out_min on-chain.
+        print(
+            f"[tee:{self.provider}] STUB sign+relay swap: {request.sui_address} "
+            f"{request.amount_in} {request.coin_in_type} -> "
+            f"(min {request.amount_out_min}) {request.coin_out_type}"
+        )
+        return f"stub-swap-{secrets.token_hex(16)}"
+
+    def _attest_swap(
+        self, request: SwapRequest, status_str: str, tx_ref: str | None
+    ) -> TeeAttestation:
+        digest_material = json.dumps(
+            {
+                "sui_address": request.sui_address,
+                "coin_in_type": request.coin_in_type,
+                "coin_out_type": request.coin_out_type,
+                "amount_in": request.amount_in,
+                "amount_out_min": request.amount_out_min,
+                "status": status_str,
+                "tx_ref": tx_ref,
+            },
+            sort_keys=True,
+        ).encode()
+        return TeeAttestation(
+            provider=self.provider,
+            enclave_measurement=settings.tee_enclave_measurement,
+            request_digest=hashlib.sha256(digest_material).hexdigest(),
+            signed_at=datetime.now(timezone.utc),
+        )
 
     def _attest(
         self,
