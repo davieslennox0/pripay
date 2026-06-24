@@ -24,6 +24,8 @@ from fastapi import HTTPException, status
 from app.config import settings
 from app.tee.base import PinVerifier, TeeExecutor
 from app.tee.schemas import (
+    AgentTransferRequest,
+    AgentTransferResult,
     SealedRequest,
     SwapRequest,
     SwapResult,
@@ -133,6 +135,57 @@ class MockTeeExecutor(TeeExecutor):
         attestation = self._attest_swap(request, status_str, tx_ref)
         return SwapResult(status=status_str, tx_ref=tx_ref, attestation=attestation)
 
+    def seal_agent_transfer(self, request: AgentTransferRequest) -> SealedRequest:
+        blob = json.dumps(asdict(request)).encode()
+        return SealedRequest(
+            provider=self.provider,
+            ciphertext=base64.b64encode(blob).decode(),
+        )
+
+    def execute_agent_transfer(self, sealed: SealedRequest) -> AgentTransferResult:
+        if sealed.provider != self.provider:
+            raise HTTPException(
+                status.HTTP_400_BAD_REQUEST,
+                f"Sealed request is for provider '{sealed.provider}', not '{self.provider}'",
+            )
+
+        # ---- everything below is "inside the enclave" ----
+        request = self._open_agent_transfer(sealed)
+
+        # No PIN to verify — app/agent already checked this request against
+        # the API key's caps before sealing it. Still re-validates the fee
+        # spec, same as a session-initiated transfer.
+        fee, receiver_gets = self._validate(request.amount)
+
+        if request.recipient_sui_address is not None:
+            tx_ref = self._sign_and_relay_transfer(
+                request.sender_sui_address, request.recipient_sui_address, receiver_gets
+            )
+            status_str = "settled_stub"
+            claim_token = None
+        else:
+            tx_ref = self._sign_and_relay_escrow(
+                request.sender_sui_address,
+                request.recipient_platform,
+                request.recipient_handle,
+                receiver_gets,
+            )
+            status_str = "escrowed_stub"
+            claim_token = secrets.token_urlsafe(24)
+
+        attestation = self._attest_agent_transfer(
+            request, status_str, receiver_gets, tx_ref, claim_token
+        )
+        return AgentTransferResult(
+            status=status_str,
+            fee=fee,
+            receiver_gets=receiver_gets,
+            recipient_sui_address=request.recipient_sui_address,
+            tx_ref=tx_ref,
+            claim_token=claim_token,
+            attestation=attestation,
+        )
+
     # --- enclave-internal helpers ---
 
     def _open(self, sealed: SealedRequest) -> TransferRequest:
@@ -142,6 +195,10 @@ class MockTeeExecutor(TeeExecutor):
     def _open_swap(self, sealed: SealedRequest) -> SwapRequest:
         data = json.loads(base64.b64decode(sealed.ciphertext))
         return SwapRequest(**data)
+
+    def _open_agent_transfer(self, sealed: SealedRequest) -> AgentTransferRequest:
+        data = json.loads(base64.b64decode(sealed.ciphertext))
+        return AgentTransferRequest(**data)
 
     def _validate(self, amount: float) -> tuple[float, float]:
         """Authoritative copy of the fee check (brief §7). Intentionally does
@@ -197,6 +254,34 @@ class MockTeeExecutor(TeeExecutor):
                 "amount_out_min": request.amount_out_min,
                 "status": status_str,
                 "tx_ref": tx_ref,
+            },
+            sort_keys=True,
+        ).encode()
+        return TeeAttestation(
+            provider=self.provider,
+            enclave_measurement=settings.tee_enclave_measurement,
+            request_digest=hashlib.sha256(digest_material).hexdigest(),
+            signed_at=datetime.now(timezone.utc),
+        )
+
+    def _attest_agent_transfer(
+        self,
+        request: AgentTransferRequest,
+        status_str: str,
+        receiver_gets: float,
+        tx_ref: str | None,
+        claim_token: str | None,
+    ) -> TeeAttestation:
+        digest_material = json.dumps(
+            {
+                "sender": request.sender_sui_address,
+                "platform": request.recipient_platform,
+                "handle": request.recipient_handle,
+                "agent_key_id": request.agent_key_id,
+                "status": status_str,
+                "receiver_gets": receiver_gets,
+                "tx_ref": tx_ref,
+                "claim_token": claim_token,
             },
             sort_keys=True,
         ).encode()

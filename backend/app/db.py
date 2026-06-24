@@ -147,9 +147,35 @@ class SendRecord(Base):
     walrus_blob_id: Mapped[str | None] = mapped_column(String, nullable=True)
     record_hash: Mapped[str | None] = mapped_column(String, nullable=True)
     seal_identity: Mapped[str | None] = mapped_column(String, nullable=True)
+    # Set when this send was agent-initiated (brief §9), so app.agent can sum
+    # a key's trailing-24h volume against its daily cap. Null for
+    # session-initiated sends.
+    agent_key_id: Mapped[int | None] = mapped_column(Integer, nullable=True, index=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
     )
+
+
+class AgentApiKey(Base):
+    """A scoped, revocable API key credential for AI agents (brief §9) —
+    distinct from the human zkLogin session, so an agent can hold a
+    long-lived credential instead of a human OAuth session. Only the hash is
+    stored; the plaintext key is shown once at creation and never again."""
+
+    __tablename__ = "agent_api_keys"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    sui_address: Mapped[str] = mapped_column(String, nullable=False, index=True)
+    key_hash: Mapped[str] = mapped_column(String, nullable=False, unique=True)
+    key_prefix: Mapped[str] = mapped_column(String, nullable=False)  # display/identification only
+    label: Mapped[str] = mapped_column(String, nullable=False)
+    max_tx_usdc: Mapped[float] = mapped_column(Float, nullable=False)
+    daily_volume_cap_usdc: Mapped[float] = mapped_column(Float, nullable=False)
+    revoked: Mapped[bool] = mapped_column(Boolean, default=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
+    )
+    last_used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
 
 class ReceiveRecord(Base):

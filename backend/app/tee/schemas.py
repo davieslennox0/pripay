@@ -94,3 +94,30 @@ class SwapResult:
     status: str
     tx_ref: str | None
     attestation: TeeAttestation
+
+
+@dataclass
+class AgentTransferRequest:
+    """An agent-initiated transfer (brief §9). No PIN — the scoped, revocable
+    API key already authorized this and had its caps checked (app/agent)
+    before it ever gets sealed; the key *is* the credential here, by design
+    ("instead of a human OAuth session"). Still re-validated against the fee
+    spec inside the enclave exactly like a session-initiated transfer."""
+
+    sender_sui_address: str
+    recipient_platform: str
+    recipient_handle: str
+    recipient_sui_address: str | None
+    amount: float
+    agent_key_id: int
+
+
+@dataclass
+class AgentTransferResult:
+    status: str
+    fee: float
+    receiver_gets: float
+    recipient_sui_address: str | None
+    tx_ref: str | None
+    claim_token: str | None
+    attestation: TeeAttestation

@@ -16,6 +16,8 @@ from abc import ABC, abstractmethod
 from typing import Callable
 
 from app.tee.schemas import (
+    AgentTransferRequest,
+    AgentTransferResult,
     SealedRequest,
     SwapRequest,
     SwapResult,
@@ -61,3 +63,16 @@ class TeeExecutor(ABC):
         """Open the sealed swap request inside the enclave, verify the PIN,
         sign + relay the (already-built, venue-quoted) transaction to Sui,
         and return a result with attestation."""
+
+    @abstractmethod
+    def seal_agent_transfer(self, request: AgentTransferRequest) -> SealedRequest:
+        """Encrypt a plaintext agent-initiated transfer to the enclave
+        (brief §9). No PIN to protect — app/agent already authorized this
+        against the API key's caps before sealing."""
+
+    @abstractmethod
+    def execute_agent_transfer(self, sealed: SealedRequest) -> AgentTransferResult:
+        """Open the sealed agent transfer inside the enclave, re-validate
+        against the fee spec (never trusting the caller, same as a
+        session-initiated transfer), sign + relay to Sui, and return a
+        result with attestation. No pin_verifier — there's no PIN here."""

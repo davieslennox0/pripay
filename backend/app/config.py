@@ -111,5 +111,12 @@ class Settings(BaseSettings):
     sui_rpc_url: str = "https://fullnode.testnet.sui.io:443"
     coingecko_api_url: str = "https://api.coingecko.com/api/v3"
 
+    # AI agent API keys (brief §9 + §12 step 11). A scoped, revocable key
+    # substitutes for both the human session and the PIN for agent-initiated
+    # sends — these are the defaults applied when a key is created without
+    # explicit overrides, not hard ceilings.
+    agent_default_max_tx_usdc: float = 50.0
+    agent_default_daily_cap_usdc: float = 200.0
+
 
 settings = Settings()

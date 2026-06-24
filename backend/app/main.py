@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from app.agent.routes import router as agent_router
 from app.auth.routes import router as auth_router
 from app.config import settings
 from app.dashboard.routes import router as dashboard_router
@@ -30,6 +31,7 @@ app.include_router(receive_router)
 app.include_router(swap_router)
 app.include_router(tee_router)
 app.include_router(dashboard_router)
+app.include_router(agent_router)
 
 
 @app.on_event("startup")
