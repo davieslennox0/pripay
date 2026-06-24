@@ -20,6 +20,10 @@ class Settings(BaseSettings):
     pin_max_attempts: int = 5
     pin_lockout_base_minutes: int = 1
     pin_lockout_max_minutes: int = 60
+    # PIN reset (brief §6: "only resettable via zkLogin re-auth + cooldown
+    # period") — separate from pin_lockout_*, which governs failed-attempt
+    # backoff on the existing PIN, not a deliberate reset.
+    pin_reset_cooldown_minutes: int = 10
 
     # Email magic-link handle binding (brief §1B). If smtp_host is unset, the
     # link is logged to the console instead of emailed — lets bind/verify be
@@ -100,6 +104,12 @@ class Settings(BaseSettings):
     swap_venue: str = "aftermath"
     aftermath_api_url: str = "https://aftermath.finance/api"
     swap_default_slippage: float = 0.01
+
+    # Dashboard (brief §11). Sui network matches the frontend's
+    # VITE_SUI_NETWORK default (testnet — brief §12 step 4: "happy path on
+    # testnet"). CoinGecko needs no key for the public simple-price endpoint.
+    sui_rpc_url: str = "https://fullnode.testnet.sui.io:443"
+    coingecko_api_url: str = "https://api.coingecko.com/api/v3"
 
 
 settings = Settings()

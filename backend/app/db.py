@@ -55,6 +55,26 @@ class PinCredential(Base):
     )
 
 
+class PinResetToken(Base):
+    """A pending PIN reset (brief §6: "only resettable via zkLogin re-auth +
+    cooldown period"). Only issued after re-verifying a *fresh* Google ID
+    token against the session's own google_sub (not just the existing
+    session cookie), so a hijacked session alone can't reset the PIN. The
+    new PIN can't take effect until `available_at`, giving the real owner a
+    window to notice and react (e.g. via an alert email, once that exists)
+    if this wasn't them."""
+
+    __tablename__ = "pin_reset_tokens"
+
+    token: Mapped[str] = mapped_column(String, primary_key=True)
+    sui_address: Mapped[str] = mapped_column(String, nullable=False, index=True)
+    available_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    consumed: Mapped[bool] = mapped_column(Boolean, default=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
+    )
+
+
 class BoundHandle(Base):
     """A verified platform-handle -> Sui address binding (brief §1B).
 

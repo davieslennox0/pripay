@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.auth.routes import router as auth_router
 from app.config import settings
+from app.dashboard.routes import router as dashboard_router
 from app.db import init_db
 from app.handles.routes import router as handles_router
 from app.pin.routes import router as pin_router
@@ -28,6 +29,7 @@ app.include_router(send_router)
 app.include_router(receive_router)
 app.include_router(swap_router)
 app.include_router(tee_router)
+app.include_router(dashboard_router)
 
 
 @app.on_event("startup")

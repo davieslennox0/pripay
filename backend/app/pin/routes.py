@@ -4,7 +4,13 @@ from sqlalchemy.orm import Session
 from app.auth.service import require_session
 from app.db import get_db
 from app.pin import service
-from app.pin.schemas import PinBody, PinStatusResponse
+from app.pin.schemas import (
+    PinBody,
+    PinResetConfirmBody,
+    PinResetRequestBody,
+    PinResetRequestResponse,
+    PinStatusResponse,
+)
 
 router = APIRouter(prefix="/pin", tags=["pin"])
 
@@ -27,4 +33,22 @@ def verify_pin(
     body: PinBody, claims: dict = Depends(require_session), db: Session = Depends(get_db)
 ):
     service.verify_pin(db, claims["sui_address"], body.pin)
+    return {"ok": True}
+
+
+@router.post("/reset/request", response_model=PinResetRequestResponse)
+def reset_request(
+    body: PinResetRequestBody,
+    claims: dict = Depends(require_session),
+    db: Session = Depends(get_db),
+):
+    token, available_at = service.request_reset(
+        db, claims["sui_address"], claims["sub"], body.id_token
+    )
+    return PinResetRequestResponse(reset_token=token, available_at=available_at)
+
+
+@router.post("/reset/confirm")
+def reset_confirm(body: PinResetConfirmBody, db: Session = Depends(get_db)):
+    service.confirm_reset(db, body.reset_token, body.new_pin)
     return {"ok": True}

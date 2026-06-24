@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Dashboard } from "./components/Dashboard";
 import { PinSetup } from "./components/PinSetup";
 import { SendFlow } from "./components/SendFlow";
 import { api } from "./lib/api";
@@ -11,6 +12,8 @@ function App() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [claimResult, setClaimResult] = useState<string | null>(null);
+  const [bindResult, setBindResult] = useState<string | null>(null);
+  const [tab, setTab] = useState<"send" | "dashboard">("send");
 
   useEffect(() => {
     (async () => {
@@ -29,6 +32,15 @@ function App() {
           window.history.replaceState(null, "", window.location.pathname);
           const claimed = await api.claimSend(claimToken);
           setClaimResult(`Claimed ${claimed.amount} USDC`);
+        }
+
+        if (window.location.pathname === "/verify-email") {
+          const token = new URLSearchParams(window.location.search).get("token");
+          window.history.replaceState(null, "", "/");
+          if (token) {
+            const bound = await api.confirmEmailBind(token);
+            setBindResult(`Bound ${bound.platform}:${bound.handle}`);
+          }
         }
       } catch {
         setSuiAddress(null);
@@ -67,7 +79,26 @@ function App() {
             </button>
           </div>
           {claimResult && <p>{claimResult}</p>}
-          {pinIsSet ? <SendFlow /> : <PinSetup onSet={() => setPinIsSet(true)} />}
+          {bindResult && <p>{bindResult}</p>}
+          {pinIsSet ? (
+            <>
+              <div>
+                <button type="button" disabled={tab === "send"} onClick={() => setTab("send")}>
+                  Send
+                </button>
+                <button
+                  type="button"
+                  disabled={tab === "dashboard"}
+                  onClick={() => setTab("dashboard")}
+                >
+                  Dashboard
+                </button>
+              </div>
+              {tab === "send" ? <SendFlow /> : <Dashboard />}
+            </>
+          ) : (
+            <PinSetup onSet={() => setPinIsSet(true)} />
+          )}
         </>
       ) : (
         <div>

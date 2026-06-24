@@ -51,6 +51,51 @@ export interface SendExecuteResponse {
   // Enclave that settled the send + its attestation digest (brief §4/§5).
   tee_provider: string | null;
   tee_attestation: string | null;
+  record_hash: string | null;
+}
+
+export interface BoundHandleOut {
+  platform: string;
+  handle: string;
+  verified_at: string;
+}
+
+export interface BalanceOut {
+  coin_type: string;
+  symbol: string | null;
+  balance: string;
+  decimals: number | null;
+  amount: number | null;
+  price_usd: number | null;
+  value_usd: number | null;
+}
+
+export interface HistoryItem {
+  kind: string;
+  direction: string | null;
+  record_id: number;
+  counterparty: string | null;
+  status: string;
+  created_at: string;
+  can_decrypt: boolean;
+}
+
+export interface HistoryDecrypted {
+  amount: number;
+  token: string;
+  memo: string | null;
+}
+
+export interface PersonalVolume {
+  total_sent: number;
+  total_received: number;
+  swap_count: number;
+}
+
+export interface PlatformVolume {
+  total_volume: number;
+  total_fees: number;
+  send_count: number;
 }
 
 export const api = {
@@ -93,5 +138,48 @@ export const api = {
     request<{ ok: boolean; amount: number }>("/send/claim", {
       method: "POST",
       body: JSON.stringify({ claim_token: claimToken }),
+    }),
+
+  listHandles: () => request<BoundHandleOut[]>("/handles/mine"),
+
+  startEmailBind: (email: string) =>
+    request<{ ok: boolean }>("/handles/email/start", {
+      method: "POST",
+      body: JSON.stringify({ email }),
+    }),
+
+  confirmEmailBind: (token: string) =>
+    request<BoundHandleOut>("/handles/email/confirm", {
+      method: "POST",
+      body: JSON.stringify({ token }),
+    }),
+
+  unbindHandle: (platform: string, handle: string, pin: string) =>
+    request<{ ok: boolean }>("/handles/unbind", {
+      method: "POST",
+      body: JSON.stringify({ platform, handle, pin }),
+    }),
+
+  getBalances: () => request<BalanceOut[]>("/dashboard/balances"),
+
+  getHistory: () => request<HistoryItem[]>("/dashboard/history"),
+
+  decryptHistoryItem: (recordId: number) =>
+    request<HistoryDecrypted>(`/dashboard/history/${recordId}/decrypt`),
+
+  getVolume: () => request<PersonalVolume>("/dashboard/volume"),
+
+  getPlatformVolume: () => request<PlatformVolume>("/dashboard/volume/platform"),
+
+  requestPinReset: (idToken: string) =>
+    request<{ reset_token: string; available_at: string }>("/pin/reset/request", {
+      method: "POST",
+      body: JSON.stringify({ id_token: idToken }),
+    }),
+
+  confirmPinReset: (resetToken: string, newPin: string) =>
+    request<{ ok: boolean }>("/pin/reset/confirm", {
+      method: "POST",
+      body: JSON.stringify({ reset_token: resetToken, new_pin: newPin }),
     }),
 };

@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from pydantic import BaseModel, field_validator
 
 
@@ -14,3 +16,24 @@ class PinBody(BaseModel):
 
 class PinStatusResponse(BaseModel):
     is_set: bool
+
+
+class PinResetRequestBody(BaseModel):
+    id_token: str  # a *fresh* Google ID token, re-verified server-side
+
+
+class PinResetRequestResponse(BaseModel):
+    reset_token: str
+    available_at: datetime
+
+
+class PinResetConfirmBody(BaseModel):
+    reset_token: str
+    new_pin: str
+
+    @field_validator("new_pin")
+    @classmethod
+    def validate_new_pin(cls, value: str) -> str:
+        if not (4 <= len(value) <= 6) or not value.isdigit():
+            raise ValueError("PIN must be 4-6 digits")
+        return value
