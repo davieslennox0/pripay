@@ -123,6 +123,32 @@ class SendRecord(Base):
     )
 
 
+class ReceiveRecord(Base):
+    """An inbound cross-chain bridge into the user's own Sui address (brief
+    §8 + §12 step 8). Umbra never custodies these funds — the aggregator's
+    quoted route lands USDC directly at `to_sui_address`; this row just
+    tracks the quote -> submit -> settle lifecycle (for the dashboard, and so
+    `/receive/{id}/status` knows what to poll)."""
+
+    __tablename__ = "receive_records"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    to_sui_address: Mapped[str] = mapped_column(String, nullable=False, index=True)
+    from_chain: Mapped[str] = mapped_column(String, nullable=False)
+    from_token: Mapped[str] = mapped_column(String, nullable=False)
+    from_amount: Mapped[str] = mapped_column(String, nullable=False)
+    to_amount_min: Mapped[str] = mapped_column(String, nullable=False)
+    tool: Mapped[str] = mapped_column(String, nullable=False)
+    quote_id: Mapped[str] = mapped_column(String, nullable=False)
+    from_tx_hash: Mapped[str | None] = mapped_column(String, nullable=True)
+    receiving_tx_hash: Mapped[str | None] = mapped_column(String, nullable=True)
+    # quoted -> pending (source tx submitted) -> settled | failed
+    status: Mapped[str] = mapped_column(String, nullable=False, default="quoted")
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
+    )
+
+
 def init_db() -> None:
     Base.metadata.create_all(bind=engine)
 

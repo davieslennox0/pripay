@@ -76,5 +76,20 @@ class Settings(BaseSettings):
     # dev; set a stable key in prod or blobs become unreadable across restarts).
     record_encryption_key: str = secrets.token_hex(32)
 
+    # Multi-chain receiving (brief §8 + §12 step 8). Umbra never custodies the
+    # inbound funds — the aggregator quotes a route that lands USDC directly
+    # at the user's own Sui address; the depositor's source-chain wallet signs
+    # the relay tx LI.FI returns. "lifi" is the only aggregator wired up so
+    # far (it already supports Sui as a destination chain); deBridge/Wormhole
+    # can be added later behind the same BridgeAggregator interface.
+    receive_aggregator: str = "lifi"
+    lifi_api_url: str = "https://li.quest/v1"
+    lifi_integrator: str = "umbra"
+    # Native Circle USDC on Sui mainnet — the only landing token for MVP
+    # (brief §8: "settles as USDC ... on Sui").
+    sui_usdc_address: str = (
+        "0xdba34672e30cb065b1f93e3ab55318768fd6fef66c15942c9f7cb846e2f900e7::usdc::USDC"
+    )
+
 
 settings = Settings()
