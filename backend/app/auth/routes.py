@@ -41,6 +41,7 @@ def create_session(body: SessionRequest, response: Response, db: Session = Depen
         token,
         httponly=True,
         samesite="lax",
+        secure=True,
         max_age=settings.session_ttl_minutes * 60,
     )
     return SessionResponse(sui_address=body.sui_address)

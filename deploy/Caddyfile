@@ -1,0 +1,41 @@
+{
+	email hollyhushz11@gmail.com
+}
+
+pripay.duckdns.org {
+	handle /auth* {
+		reverse_proxy localhost:8000
+	}
+	handle /pin* {
+		reverse_proxy localhost:8000
+	}
+	handle /handles* {
+		reverse_proxy localhost:8000
+	}
+	handle /send* {
+		reverse_proxy localhost:8000
+	}
+	handle /receive* {
+		reverse_proxy localhost:8000
+	}
+	handle /swap* {
+		reverse_proxy localhost:8000
+	}
+	handle /tee* {
+		reverse_proxy localhost:8000
+	}
+	handle /dashboard* {
+		reverse_proxy localhost:8000
+	}
+	handle /agent* {
+		reverse_proxy localhost:8000
+	}
+	handle /health {
+		reverse_proxy localhost:8000
+	}
+	handle {
+		root * /var/www/pripay/frontend/dist
+		file_server
+		try_files {path} /index.html
+	}
+}

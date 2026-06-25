@@ -1,0 +1,14 @@
+[Unit]
+Description=Umbra backend (FastAPI)
+After=network.target
+
+[Service]
+Type=simple
+User=umbra
+WorkingDirectory=/var/www/pripay/backend
+EnvironmentFile=/var/www/pripay/backend/.env
+ExecStart=/var/www/pripay/backend/.venv/bin/uvicorn app.main:app --host 127.0.0.1 --port 8000
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target

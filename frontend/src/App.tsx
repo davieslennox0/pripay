@@ -71,23 +71,28 @@ function App() {
       <h1>Umbra</h1>
       {suiAddress ? (
         <>
-          <p>Signed in as</p>
-          <code>{suiAddress}</code>
-          <div>
-            <button type="button" onClick={handleLogout}>
+          <div className="session-bar">
+            <code>{suiAddress}</code>
+            <button type="button" className="btn" onClick={handleLogout}>
               Sign out
             </button>
           </div>
-          {claimResult && <p>{claimResult}</p>}
-          {bindResult && <p>{bindResult}</p>}
+          {claimResult && <p className="hint">{claimResult}</p>}
+          {bindResult && <p className="hint">{bindResult}</p>}
           {pinIsSet ? (
             <>
-              <div>
-                <button type="button" disabled={tab === "send"} onClick={() => setTab("send")}>
+              <div className="tabs">
+                <button
+                  type="button"
+                  className="btn"
+                  disabled={tab === "send"}
+                  onClick={() => setTab("send")}
+                >
                   Send
                 </button>
                 <button
                   type="button"
+                  className="btn"
                   disabled={tab === "dashboard"}
                   onClick={() => setTab("dashboard")}
                 >
@@ -101,13 +106,13 @@ function App() {
           )}
         </>
       ) : (
-        <div>
-          <button type="button" onClick={handleLogin}>
+        <div className="login-screen">
+          <button type="button" className="btn" onClick={handleLogin}>
             Sign in with Google
           </button>
         </div>
       )}
-      {error && <p style={{ color: "red" }}>{error}</p>}
+      {error && <p className="error">{error}</p>}
     </section>
   );
 }

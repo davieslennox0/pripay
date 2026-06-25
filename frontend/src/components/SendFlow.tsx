@@ -65,25 +65,25 @@ export function SendFlow() {
       ? `${window.location.origin}/?claim_token=${result.claim_token}`
       : null;
     return (
-      <div>
+      <div className="panel">
         <h2>Sent</h2>
-        <p>Status: {result.status}</p>
-        <p>Recipient gets: {result.receiver_gets} USDC</p>
+        <p className="hint">Status: {result.status}</p>
+        <p className="hint">Recipient gets: {result.receiver_gets} USDC</p>
         {claimLink && (
-          <p>
+          <div className="claim">
             Recipient hasn't bound this handle yet. Share this claim link:
             <br />
             <code>{claimLink}</code>
-          </p>
+          </div>
         )}
-        {result.tx_ref && <p>Tx ref: {result.tx_ref}</p>}
+        {result.tx_ref && <p className="hint">Tx ref: {result.tx_ref}</p>}
         {result.tee_provider && (
-          <p>
+          <p className="hint">
             Settled in <code>{result.tee_provider}</code> enclave · attestation{" "}
             <code>{result.tee_attestation?.slice(0, 16)}…</code>
           </p>
         )}
-        <button type="button" onClick={() => setResult(null)}>
+        <button type="button" className="btn" onClick={() => setResult(null)}>
           Send another
         </button>
       </div>
@@ -91,13 +91,14 @@ export function SendFlow() {
   }
 
   return (
-    <div>
+    <div className="panel">
       <h2>Send</h2>
-      <div>
+      <div className="pills">
         {PLATFORMS.map((p) => (
           <button
             key={p}
             type="button"
+            className="pill"
             disabled={p === platform}
             onClick={() => {
               setPlatform(p);
@@ -111,7 +112,7 @@ export function SendFlow() {
         ))}
       </div>
 
-      <div>
+      <div className="field">
         <input
           placeholder={`${platform} handle`}
           value={query}
@@ -122,7 +123,7 @@ export function SendFlow() {
           }}
         />
         {results.length > 0 && (
-          <ul>
+          <ul className="suggestions">
             {results.map((r) => (
               <li key={r.sui_address}>
                 <button
@@ -141,7 +142,7 @@ export function SendFlow() {
         )}
       </div>
 
-      <div>
+      <div className="field">
         <input
           type="number"
           placeholder="Amount (USDC)"
@@ -155,10 +156,12 @@ export function SendFlow() {
           }}
         />
       </div>
-      {quoteError && <p style={{ color: "red" }}>{quoteError}</p>}
-      {receiverGets !== null && <p>Recipient receives: {receiverGets} USDC (after 0.10 fee)</p>}
+      {quoteError && <p className="error">{quoteError}</p>}
+      {receiverGets !== null && (
+        <p className="hint">Recipient receives: {receiverGets} USDC (after 0.10 fee)</p>
+      )}
 
-      <div>
+      <div className="field">
         <input
           type="password"
           inputMode="numeric"
@@ -168,8 +171,13 @@ export function SendFlow() {
         />
       </div>
 
-      {submitError && <p style={{ color: "red" }}>{submitError}</p>}
-      <button type="button" disabled={!handle || !amount || !pin || submitting} onClick={handleSubmit}>
+      {submitError && <p className="error">{submitError}</p>}
+      <button
+        type="button"
+        className="btn btn-block"
+        disabled={!handle || !amount || !pin || submitting}
+        onClick={handleSubmit}
+      >
         {submitting ? "Sending..." : "Send"}
       </button>
     </div>

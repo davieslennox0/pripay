@@ -19,8 +19,7 @@ interface PendingPinReset {
 
 export function Dashboard() {
   return (
-    <div>
-      <h2>Dashboard</h2>
+    <div className="panel dashboard">
       <Balances />
       <Volume />
       <History />
@@ -39,22 +38,26 @@ function Balances() {
   }, []);
 
   return (
-    <section>
+    <section className="card">
       <h3>Balances</h3>
-      {error && <p style={{ color: "red" }}>{error}</p>}
-      {balances === null && !error && <p>Loading…</p>}
+      {error && <p className="error">{error}</p>}
+      {balances === null && !error && <p className="hint">Loading…</p>}
       {balances !== null && (
-        <ul>
+        <ul className="list">
           {balances
             .filter((b) => b.symbol !== null)
             .map((b) => (
-              <li key={b.coin_type}>
-                {b.amount} {b.symbol}
-                {b.value_usd !== null && ` (~$${b.value_usd.toFixed(2)})`}
+              <li className="list-row" key={b.coin_type}>
+                <span>
+                  {b.amount} {b.symbol}
+                </span>
+                {b.value_usd !== null && <span>~${b.value_usd.toFixed(2)}</span>}
               </li>
             ))}
           {balances.filter((b) => b.symbol === null).length > 0 && (
-            <li>+{balances.filter((b) => b.symbol === null).length} other token(s)</li>
+            <li className="list-row">
+              +{balances.filter((b) => b.symbol === null).length} other token(s)
+            </li>
           )}
         </ul>
       )}
@@ -72,16 +75,16 @@ function Volume() {
   }, []);
 
   return (
-    <section>
+    <section className="card">
       <h3>Volume</h3>
       {personal && (
-        <p>
+        <p className="hint">
           You've sent {personal.total_sent} USDC, received {personal.total_received} USDC, and
           made {personal.swap_count} swap(s).
         </p>
       )}
       {platform && (
-        <p>
+        <p className="hint">
           Umbra-wide: {platform.total_volume} USDC moved across {platform.send_count} send(s).
         </p>
       )}
@@ -108,31 +111,33 @@ function History() {
   }
 
   return (
-    <section>
+    <section className="card">
       <h3>Transaction history</h3>
-      {error && <p style={{ color: "red" }}>{error}</p>}
-      {items === null && !error && <p>Loading…</p>}
-      {items !== null && items.length === 0 && <p>No activity yet.</p>}
+      {error && <p className="error">{error}</p>}
+      {items === null && !error && <p className="hint">Loading…</p>}
+      {items !== null && items.length === 0 && <p className="hint">No activity yet.</p>}
       {items !== null && items.length > 0 && (
-        <ul>
+        <ul className="list">
           {items.map((item) => {
             const reveal_ = decrypted[item.record_id];
             return (
-              <li key={`${item.kind}-${item.record_id}`}>
-                [{item.kind}
-                {item.direction ? `:${item.direction}` : ""}] {item.counterparty ?? "—"} —{" "}
-                {item.status} — {new Date(item.created_at).toLocaleString()}
+              <li className="list-row" key={`${item.kind}-${item.record_id}`}>
+                <span>
+                  [{item.kind}
+                  {item.direction ? `:${item.direction}` : ""}] {item.counterparty ?? "—"} —{" "}
+                  {item.status} — {new Date(item.created_at).toLocaleString()}
+                  {reveal_ && (
+                    <>
+                      {" "}
+                      → {reveal_.amount} {reveal_.token}
+                      {reveal_.memo ? ` ("${reveal_.memo}")` : ""}
+                    </>
+                  )}
+                </span>
                 {item.can_decrypt && !reveal_ && (
-                  <button type="button" onClick={() => reveal(item.record_id)}>
+                  <button type="button" className="btn" onClick={() => reveal(item.record_id)}>
                     Decrypt
                   </button>
-                )}
-                {reveal_ && (
-                  <span>
-                    {" "}
-                    → {reveal_.amount} {reveal_.token}
-                    {reveal_.memo ? ` ("${reveal_.memo}")` : ""}
-                  </span>
                 )}
               </li>
             );
@@ -177,25 +182,32 @@ function Handles() {
   }
 
   return (
-    <section>
+    <section className="card">
       <h3>Bound handles</h3>
-      {error && <p style={{ color: "red" }}>{error}</p>}
-      {handles !== null && handles.length === 0 && <p>No handles bound yet.</p>}
+      {error && <p className="error">{error}</p>}
+      {handles !== null && handles.length === 0 && <p className="hint">No handles bound yet.</p>}
       {handles !== null && handles.length > 0 && (
-        <ul>
+        <ul className="list">
           {handles.map((h) => (
-            <li key={`${h.platform}:${h.handle}`}>
-              {h.platform}:{h.handle}
-              <input
-                type="password"
-                inputMode="numeric"
-                placeholder="PIN"
-                value={unbindPin[`${h.platform}:${h.handle}`] ?? ""}
-                onChange={(e) =>
-                  setUnbindPin((prev) => ({ ...prev, [`${h.platform}:${h.handle}`]: e.target.value }))
-                }
-              />
-              <button type="button" onClick={() => handleUnbind(h.platform, h.handle)}>
+            <li className="list-row" key={`${h.platform}:${h.handle}`}>
+              <span>
+                {h.platform}:{h.handle}
+              </span>
+              <div className="field">
+                <input
+                  type="password"
+                  inputMode="numeric"
+                  placeholder="PIN"
+                  value={unbindPin[`${h.platform}:${h.handle}`] ?? ""}
+                  onChange={(e) =>
+                    setUnbindPin((prev) => ({
+                      ...prev,
+                      [`${h.platform}:${h.handle}`]: e.target.value,
+                    }))
+                  }
+                />
+              </div>
+              <button type="button" className="btn" onClick={() => handleUnbind(h.platform, h.handle)}>
                 Unbind
               </button>
             </li>
@@ -204,16 +216,16 @@ function Handles() {
       )}
 
       {bindStarted ? (
-        <p>Check your email for a verification link to finish binding.</p>
+        <p className="hint">Check your email for a verification link to finish binding.</p>
       ) : (
-        <div>
+        <div className="inline-form">
           <input
             type="email"
             placeholder="Bind an email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
           />
-          <button type="button" disabled={!email} onClick={handleStartBind}>
+          <button type="button" className="btn" disabled={!email} onClick={handleStartBind}>
             Bind
           </button>
         </div>
@@ -274,25 +286,28 @@ function Security() {
   const cooldownRemainingMs = availableAt !== null ? availableAt - now : 0;
 
   return (
-    <section>
+    <section className="card">
       <h3>Security</h3>
-      {done && <p>PIN reset.</p>}
+      {done && <p className="hint">PIN reset.</p>}
       {!pending && !done && (
         <div>
-          <p>Forgot your PIN, or think someone else might know it? Reset it via a fresh Google sign-in.</p>
-          <button type="button" onClick={startReset}>
+          <p className="hint">
+            Forgot your PIN, or think someone else might know it? Reset it via a fresh Google
+            sign-in.
+          </p>
+          <button type="button" className="btn" onClick={startReset}>
             Reset PIN
           </button>
         </div>
       )}
       {pending && cooldownRemainingMs > 0 && (
-        <p>
+        <p className="hint">
           Reset requested — available in {Math.ceil(cooldownRemainingMs / 1000)}s (brief §6
           cooldown, in case this wasn't you).
         </p>
       )}
       {pending && cooldownRemainingMs <= 0 && (
-        <div>
+        <div className="inline-form">
           <input
             type="password"
             inputMode="numeric"
@@ -300,12 +315,12 @@ function Security() {
             value={newPin}
             onChange={(e) => setNewPin(e.target.value)}
           />
-          <button type="button" disabled={newPin.length < 4} onClick={confirmReset}>
+          <button type="button" className="btn" disabled={newPin.length < 4} onClick={confirmReset}>
             Confirm new PIN
           </button>
         </div>
       )}
-      {error && <p style={{ color: "red" }}>{error}</p>}
+      {error && <p className="error">{error}</p>}
     </section>
   );
 }
