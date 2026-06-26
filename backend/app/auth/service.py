@@ -1,71 +1,96 @@
+import json
 import secrets
+import subprocess
+from base64 import b64encode
 from datetime import datetime, timedelta, timezone
+from pathlib import Path
 
 from fastapi import Cookie, HTTPException, status
-from google.auth.transport import requests as google_requests
-from google.oauth2 import id_token as google_id_token
 from jose import JWTError, jwt
 from sqlalchemy.orm import Session
 
 from app.config import settings
-from app.db import GoogleIdentity
+from app.db import SignInNonce
 
-_google_request = google_requests.Request()
+VERIFIER_SCRIPT = Path(__file__).resolve().parent.parent.parent / "verifier" / "verify.mjs"
+
+SIGNIN_MESSAGE_TEMPLATE = "Sign in to Umbra\n\nNonce: {nonce}"
 
 
-def verify_google_id_token(token: str) -> str:
-    """Verifies signature + claims against Google's JWKS and returns `sub`.
+def signin_message(nonce: str) -> bytes:
+    """The exact bytes a wallet must sign for a given nonce — built
+    server-side from the nonce alone so a client can never substitute
+    different message text for a nonce it didn't generate."""
+    return SIGNIN_MESSAGE_TEMPLATE.format(nonce=nonce).encode()
 
-    Raises 401 on any verification failure — never trust a client-supplied
-    sub/email without this check, since it determines the zkLogin salt
-    lookup and therefore the derived Sui address.
+
+def create_nonce(db: Session) -> str:
+    nonce = secrets.token_urlsafe(24)
+    expires_at = datetime.now(timezone.utc) + timedelta(minutes=settings.signin_nonce_ttl_minutes)
+    db.add(SignInNonce(nonce=nonce, expires_at=expires_at))
+    db.commit()
+    return nonce
+
+
+def consume_nonce(db: Session, nonce: str) -> None:
+    """One-time use: fetch + delete in the same call, so a nonce can never be
+    redeemed twice (replay protection)."""
+    record = db.get(SignInNonce, nonce)
+    if record is None:
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Unknown or already-used nonce")
+    db.delete(record)
+    db.commit()
+    expires_at = record.expires_at
+    if expires_at.tzinfo is None:  # SQLite drops tzinfo on round-trip; stored as UTC
+        expires_at = expires_at.replace(tzinfo=timezone.utc)
+    if expires_at < datetime.now(timezone.utc):
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Nonce expired")
+
+
+def verify_wallet_signature(message: bytes, signature: str, address: str) -> bool:
+    """Verifies a Sui wallet signature over `message`, for either a plain
+    keypair account or a zkLogin account (e.g. Slush's "Continue with
+    Google" login) — both schemes are handled uniformly by `@mysten/sui`'s
+    isValidPersonalMessageSignature. Python has no maintained Groth16/zkLogin
+    verifier, so this shells out to the small Node helper in backend/verifier
+    instead of reimplementing that cryptography here.
     """
-    if not settings.google_client_id:
+    payload = {
+        "message_b64": b64encode(message).decode(),
+        "signature": signature,
+        "address": address,
+        "rpc_url": settings.sui_rpc_url,
+    }
+    try:
+        result = subprocess.run(
+            ["node", str(VERIFIER_SCRIPT)],
+            input=json.dumps(payload),
+            capture_output=True,
+            text=True,
+            timeout=15,
+        )
+    except subprocess.TimeoutExpired:
+        raise HTTPException(
+            status.HTTP_500_INTERNAL_SERVER_ERROR, "Signature verification timed out"
+        )
+
+    if result.returncode != 0:
         raise HTTPException(
             status.HTTP_500_INTERNAL_SERVER_ERROR,
-            "GOOGLE_CLIENT_ID is not configured on the backend",
+            f"Signature verifier failed: {result.stderr.strip()}",
         )
+
     try:
-        claims = google_id_token.verify_oauth2_token(
-            token, _google_request, settings.google_client_id
-        )
-    except ValueError as exc:
-        raise HTTPException(status.HTTP_401_UNAUTHORIZED, f"Invalid Google ID token: {exc}")
-
-    if claims.get("iss") not in ("accounts.google.com", "https://accounts.google.com"):
-        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Unexpected token issuer")
-
-    return claims["sub"]
-
-
-def get_or_create_salt(db: Session, google_sub: str) -> str:
-    """zkLogin requires a stable per-user salt to deterministically derive
-    the same Sui address across logins. Once issued, this must never change
-    for a given google_sub or the user loses access to their address."""
-    identity = db.get(GoogleIdentity, google_sub)
-    if identity is not None:
-        return identity.salt
-
-    salt = secrets.token_hex(16)
-    db.add(GoogleIdentity(google_sub=google_sub, salt=salt))
-    db.commit()
-    return salt
-
-
-def bind_sui_address(db: Session, google_sub: str, sui_address: str) -> None:
-    identity = db.get(GoogleIdentity, google_sub)
-    if identity is None:
+        return bool(json.loads(result.stdout)["valid"])
+    except (json.JSONDecodeError, KeyError):
         raise HTTPException(
-            status.HTTP_400_BAD_REQUEST,
-            "No salt issued for this google_sub — call /auth/google/verify first",
+            status.HTTP_500_INTERNAL_SERVER_ERROR, "Signature verifier returned malformed output"
         )
-    identity.sui_address = sui_address
-    db.commit()
 
 
-def create_session_token(google_sub: str, sui_address: str) -> str:
+def create_session_token(sui_address: str) -> str:
     expires_at = datetime.now(timezone.utc) + timedelta(minutes=settings.session_ttl_minutes)
-    payload = {"sub": google_sub, "sui_address": sui_address, "exp": expires_at}
+    payload = {"sui_address": sui_address, "exp": expires_at}
     return jwt.encode(payload, settings.session_secret, algorithm="HS256")
 
 

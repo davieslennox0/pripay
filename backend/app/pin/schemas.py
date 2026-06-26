@@ -19,7 +19,8 @@ class PinStatusResponse(BaseModel):
 
 
 class PinResetRequestBody(BaseModel):
-    id_token: str  # a *fresh* Google ID token, re-verified server-side
+    nonce: str  # from /auth/nonce
+    signature: str  # a *fresh* wallet signature over that nonce, re-verified server-side
 
 
 class PinResetRequestResponse(BaseModel):

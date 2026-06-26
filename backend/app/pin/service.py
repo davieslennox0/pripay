@@ -55,17 +55,17 @@ def verify_pin(db: Session, sui_address: str, pin: str) -> None:
 
 
 def request_reset(
-    db: Session, sui_address: str, expected_google_sub: str, id_token: str
+    db: Session, sui_address: str, nonce: str, signature: str
 ) -> tuple[str, datetime]:
-    """Step 1 of a PIN reset (brief §6) — requires a *fresh* Google re-auth,
-    not just the existing session cookie, so a hijacked session alone can't
-    reset the PIN. Works even while locked out (that's the whole point of a
-    reset path); returns a token (+ when it unlocks) that only unlocks after
-    a cooldown."""
-    from app.auth.service import verify_google_id_token  # local import avoids an import cycle
+    """Step 1 of a PIN reset (brief §6) — requires a *fresh* wallet
+    re-signature, not just the existing session cookie, so a hijacked
+    session alone can't reset the PIN. Works even while locked out (that's
+    the whole point of a reset path); returns a token (+ when it unlocks)
+    that only unlocks after a cooldown."""
+    from app.auth.service import consume_nonce, signin_message, verify_wallet_signature
 
-    google_sub = verify_google_id_token(id_token)
-    if google_sub != expected_google_sub:
+    consume_nonce(db, nonce)
+    if not verify_wallet_signature(signin_message(nonce), signature, sui_address):
         raise HTTPException(
             status.HTTP_401_UNAUTHORIZED, "Re-auth doesn't match the current session"
         )

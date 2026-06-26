@@ -1,0 +1,15 @@
+{
+  "network": "testnet",
+  "deployer": "0xf2b22a6e76e2b40ad6c9bfab323060f84bb50e01b99aed8c444fbdd02a4d3337",
+  "umbra_package_id": "0xa41a92b7193c3af04e5256931e01fe372c5b627e7b03e9310dc7ef687ebec0e5",
+  "account_registry": "0x537776f0efcb27e2de4e9176879747090f6e89965eca8b9bc8b4e7a7f5ddde19",
+  "handle_registry": "0xfc38865fe2a80d51ec1a0bca73c5b190b64f9a662221e5a31134b26c5b3b0a2d",
+  "escrow_vault": "0x89534acab2785b8363c2880f13b0f6e0c5da69ade18d8c5961bd232ab892f8a8",
+  "revenue_vault": "0xa54e6f05bb08dbc97320d4e9ede74e86c89b83c279ff04ca2991c5b4869c8bd5",
+  "revenue_admin": "0xf2b22a6e76e2b40ad6c9bfab323060f84bb50e01b99aed8c444fbdd02a4d3337",
+  "zusdc_package_id": "0x228245f74e01948d43ef584c0e94e160874e7936434e2e390eec7228db2b61ba",
+  "zusdc_treasury_cap": "0x6e4e4afd8c5388d2810fc72e263b77de4efcece57a243888fa8634c86dc4c6e3",
+  "zusdc_metadata": "0x855f1975802113cdcf801a4dc22dfd5ff64195e96c988b9e8796315e0f31f168",
+  "coin_type": "0x228245f74e01948d43ef584c0e94e160874e7936434e2e390eec7228db2b61ba::zusdc::ZUSDC",
+  "note": "Vaults use zUSDC (6 dec testnet mock). Redeploy with Circle USDC type for mainnet."
+}

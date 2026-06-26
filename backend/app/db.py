@@ -25,19 +25,18 @@ class Base(DeclarativeBase):
     pass
 
 
-class GoogleIdentity(Base):
-    """Per-user zkLogin salt, keyed by Google's stable `sub` claim.
+class SignInNonce(Base):
+    """A one-time challenge a wallet must sign to prove control of a Sui
+    address (brief §1: zkLogin via a wallet like Slush, instead of the app
+    driving its own OAuth flow). Issued by /auth/nonce, consumed (deleted) the
+    moment it's redeemed at /auth/session or /pin/reset/request — replay of
+    the same nonce is therefore impossible, and `expires_at` bounds how long
+    an unused nonce stays valid."""
 
-    Deliberately stores no email/profile data here (privacy-by-default,
-    brief §0) — only what's needed to deterministically re-derive the same
-    zkLogin Sui address across logins.
-    """
+    __tablename__ = "signin_nonces"
 
-    __tablename__ = "google_identities"
-
-    google_sub: Mapped[str] = mapped_column(String, primary_key=True)
-    salt: Mapped[str] = mapped_column(String, nullable=False)
-    sui_address: Mapped[str | None] = mapped_column(String, nullable=True)
+    nonce: Mapped[str] = mapped_column(String, primary_key=True)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
     )
@@ -60,12 +59,12 @@ class PinCredential(Base):
 
 class PinResetToken(Base):
     """A pending PIN reset (brief §6: "only resettable via zkLogin re-auth +
-    cooldown period"). Only issued after re-verifying a *fresh* Google ID
-    token against the session's own google_sub (not just the existing
-    session cookie), so a hijacked session alone can't reset the PIN. The
-    new PIN can't take effect until `available_at`, giving the real owner a
-    window to notice and react (e.g. via an alert email, once that exists)
-    if this wasn't them."""
+    cooldown period"). Only issued after re-verifying a *fresh* wallet
+    signature over a new nonce against the session's own sui_address (not
+    just the existing session cookie), so a hijacked session alone can't
+    reset the PIN. The new PIN can't take effect until `available_at`, giving
+    the real owner a window to notice and react (e.g. via an alert email,
+    once that exists) if this wasn't them."""
 
     __tablename__ = "pin_reset_tokens"
 

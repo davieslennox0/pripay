@@ -43,7 +43,7 @@ def reset_request(
     db: Session = Depends(get_db),
 ):
     token, available_at = service.request_reset(
-        db, claims["sui_address"], claims["sub"], body.id_token
+        db, claims["sui_address"], body.nonce, body.signature
     )
     return PinResetRequestResponse(reset_token=token, available_at=available_at)
 

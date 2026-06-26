@@ -1,0 +1,9 @@
+{
+  "name": "umbra-verifier",
+  "private": true,
+  "type": "module",
+  "description": "Sui wallet signature verification helper invoked by the Python backend (app/auth/service.py) — Python has no zkLogin/Groth16 verifier, so this shells out to Mysten's own @mysten/sui SDK which handles both plain-keypair and zkLogin signatures.",
+  "dependencies": {
+    "@mysten/sui": "^2.20.0"
+  }
+}

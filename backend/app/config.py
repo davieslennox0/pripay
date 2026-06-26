@@ -6,8 +6,6 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
-    google_client_id: str = ""
-
     database_url: str = "sqlite:///./umbra.db"
 
     session_secret: str = secrets.token_hex(32)
@@ -15,6 +13,12 @@ class Settings(BaseSettings):
     session_ttl_minutes: int = 60 * 24 * 7
 
     frontend_origin: str = "http://localhost:5173"
+
+    # Wallet sign-in (brief §1A, now via Sui wallets like Slush rather than a
+    # hand-rolled OIDC redirect — see app/auth/service.py). A nonce is single
+    # use and expires quickly; it only needs to survive one wallet-signing
+    # round trip.
+    signin_nonce_ttl_minutes: int = 5
 
     # PIN (brief §6): lock after this many consecutive failures, then back off.
     pin_max_attempts: int = 5
@@ -89,11 +93,14 @@ class Settings(BaseSettings):
     receive_aggregator: str = "lifi"
     lifi_api_url: str = "https://li.quest/v1"
     lifi_integrator: str = "umbra"
-    # Native Circle USDC on Sui mainnet — the only landing token for MVP
-    # (brief §8: "settles as USDC ... on Sui").
+    # Stablecoin coin type. Defaults to zUSDC (testnet mock, 6 dec).
+    # Set to Circle USDC on mainnet:
+    #   0xdba34672e30cb065b1f93e3ab55318768fd6fef66c15942c9f7cb846e2f900e7::usdc::USDC
     sui_usdc_address: str = (
-        "0xdba34672e30cb065b1f93e3ab55318768fd6fef66c15942c9f7cb846e2f900e7::usdc::USDC"
+        "0x228245f74e01948d43ef584c0e94e160874e7936434e2e390eec7228db2b61ba::zusdc::ZUSDC"
     )
+    zusdc_package_id: str = "0x228245f74e01948d43ef584c0e94e160874e7936434e2e390eec7228db2b61ba"
+    zusdc_treasury_cap: str = "0x6e4e4afd8c5388d2810fc72e263b77de4efcece57a243888fa8634c86dc4c6e3"
 
     # Swap module (brief §10 + §12 step 9). Aftermath is Sui-native and the
     # only venue wired up for MVP ("start with Aftermath since you're already
@@ -110,6 +117,14 @@ class Settings(BaseSettings):
     # testnet"). CoinGecko needs no key for the public simple-price endpoint.
     sui_rpc_url: str = "https://fullnode.testnet.sui.io:443"
     coingecko_api_url: str = "https://api.coingecko.com/api/v3"
+
+    # On-chain contract addresses — populated after `deploy_testnet.sh` runs.
+    # Empty string = contract not yet deployed (send path will stay in stub mode).
+    sui_package_id: str = ""
+    sui_account_registry: str = ""
+    sui_handle_registry: str = ""
+    sui_escrow_vault: str = ""
+    sui_revenue_vault: str = ""
 
     # AI agent API keys (brief §9 + §12 step 11). A scoped, revocable key
     # substitutes for both the human session and the PIN for agent-initiated

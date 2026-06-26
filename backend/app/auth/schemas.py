@@ -1,18 +1,14 @@
 from pydantic import BaseModel
 
 
-class GoogleVerifyRequest(BaseModel):
-    id_token: str
-
-
-class GoogleVerifyResponse(BaseModel):
-    google_sub: str
-    salt: str
+class NonceResponse(BaseModel):
+    nonce: str
 
 
 class SessionRequest(BaseModel):
-    google_sub: str
     sui_address: str
+    nonce: str
+    signature: str
 
 
 class SessionResponse(BaseModel):
@@ -20,5 +16,4 @@ class SessionResponse(BaseModel):
 
 
 class MeResponse(BaseModel):
-    google_sub: str
     sui_address: str
